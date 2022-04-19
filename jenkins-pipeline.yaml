@@ -1,0 +1,71 @@
+pipeline {
+    agent { label 'jenkins-agent' }
+    
+    stages {
+        stage('Build') {
+            agent { label 'jenkins-agent' }
+            steps {
+                echo 'Building..'
+                sh '''
+                '''
+            }
+        }
+        stage('Checkout code') {
+        steps {
+            git branch: 'main',
+                url: 'https://github.com/torchwoodinstitute/bgpalerter-k8s.git'
+        }
+    }
+
+      stage("Building BGPalerter")
+      {
+          steps
+          {
+              sh '''
+              # Dirty
+              if [ -d "BGPalerter" ]; then rm -Rf BGPalerter; fi
+              git clone https://github.com/nttgin/BGPalerter.git
+              cd BGPalerter
+              sh build.sh
+              '''
+          }
+      }
+
+      stage("Building Image")
+      {
+          steps
+          {
+              sh '''
+              if [ -f "bgpalerter-linux-x6" ]; then rm bgpalerter-linux-x6; fi 
+              cp BGPalerter/bin/bgpalerter-linux-x64 .
+              docker -H 10.0.1.1 build .
+              '''
+          }
+      }
+
+      stage("Pushing Image to repository")
+      {
+          steps
+          {
+              sh '''
+              IMAGEID=$(docker -H 10.0.1.1 images | head -2 | grep -v CREATED | awk '{print $3}')
+              VERSION=$(grep version BGPalerter/package.json | cut -d '"' -f4)
+              echo ${IMAGEID}
+              docker -H 10.0.1.1 login -u torchwoodinstitute -p 1msuch@n00b!
+              docker -H 10.0.1.1 tag ${IMAGEID} torchwoodinstitute/bgpalerter:${VERSION}-testing
+              docker -H 10.0.1.1 push torchwoodinstitute/bgpalerter:${VERSION}-testing
+              '''
+          }
+      }
+
+
+   } 
+    
+
+    post {
+        success {
+            echo 'This will run only if successful'
+            emailext body: 'A Test EMail', recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']], subject: 'Test'
+        }
+    }
+}
