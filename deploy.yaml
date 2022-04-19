@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bgpalerter 
+  namespace: network 
+  labels:
+    app: bgpalerter 
+spec:
+  hostname: bgpalerter 
+  containers:
+  - name: bgpalerter 
+    image: torchwoodinstitute/bgpalerter:1.29.0 
+    command: ["/bin/sh", "-c"]
+    args:
+      - echo starting;
+        ./bgpalerter-linux-x64 generate -a 12345,12343 -o ./prefixes.yml;
+        ./bgpalerter-linux-x64;
+        echo done;
+    volumeMounts:
+    - name: bgpalerter-config
+      mountPath: /config.yml
+      subPath: config.yml 
+      readOnly: true
+   #imagePullPolicy: IfNotPresent
+    imagePullPolicy: Always 
+  volumes:
+  - name: bgpalerter-config
+    configMap:
+      name: bgpalerter-config
+      items:
+      - key: bgpalerter-config
+        path: config.yml 
+  restartPolicy: Always
